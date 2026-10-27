@@ -495,12 +495,12 @@ function updateProjectiles(dt){
   if(impact||p.life<=0){explodeProjectile(p);projectiles.splice(i,1)}
  }
 }
-function launchWreckingBall(){if((toolCooldowns.wrecking||0)>0)return;toolCooldowns.wrecking=TOOL_CONFIG.wrecking.cooldown;if(!wreckingBall){const mesh=new THREE.Mesh(new THREE.SphereGeometry(.62,18,14),new THREE.MeshStandardMaterial({color:0x596674,metalness:.8,roughness:.28}));mesh.castShadow=true;scene.add(mesh);wreckingBall={mesh,vel:new THREE.Vector3(),thrown:0,angle:0}}const dir=new THREE.Vector3();camera.getWorldDirection(dir);wreckingBall.thrown=1.45;wreckingBall.vel.copy(dir).multiplyScalar(19).add(new THREE.Vector3(0,2,0));toast('Bola de demolição lançada!')}
+function launchWreckingBall(){if((toolCooldowns.wrecking||0)>0)return;toolCooldowns.wrecking=TOOL_CONFIG.wrecking.cooldown;if(!wreckingBall){const mesh=new THREE.Mesh(new THREE.SphereGeometry(.62,18,14),new THREE.MeshStandardMaterial({color:0x596674,metalness:.8,roughness:.28}));mesh.castShadow=true;scene.add(mesh);wreckingBall={mesh,vel:new THREE.Vector3(),thrown:0,angle:0}}const dir=new THREE.Vector3();camera.getWorldDirection(dir);wreckingBall.mesh.position.copy(camera.position).addScaledVector(dir,.95);wreckingBall.thrown=1.45;wreckingBall.vel.copy(dir).multiplyScalar(19).add(new THREE.Vector3(0,2,0));syncToolModels();toast('Bola de demolição lançada!')}
 function launchHammer(){if((toolCooldowns.hammer||0)>0)return;toolCooldowns.hammer=TOOL_CONFIG.hammer.cooldown;hammerSlamActive=true;player.vel.y=15;player.onGround=false;toast('Marreta: salto de impacto!')}
 function smashArea(center,radius,force){const mesh=new THREE.Mesh(new THREE.SphereGeometry(.12,10,8),new THREE.MeshBasicMaterial({color:0xffb83e}));mesh.position.copy(center);scene.add(mesh);explodeProjectile({kind:'tnt',mesh,life:0,radius,force});cameraShake=Math.max(cameraShake,.9);playBreakSound(3)}
 function updateSpecialTools(dt){if(wreckingBall&&mode==='playing'){const b=wreckingBall;if(b.thrown>0){b.thrown-=dt;b.vel.y-=9.8*dt;b.mesh.position.addScaledVector(b.vel,dt);for(const bm of blocks){if(!bm.userData.preview&&!bm.userData.decorative&&b.mesh.position.distanceTo(bm.position)<.95){const p=bm.position.clone();removeStaticBlock(bm);recordBlockDamage(bm);spawnSmallBurst(p,bm.material,12,7);impactFlash(p);b.vel.multiplyScalar(.78);break}}if(b.mesh.position.y<.75){b.mesh.position.y=.75;b.vel.y=Math.abs(b.vel.y)*.45;b.vel.x*=.75;b.vel.z*=.75}}else{b.angle+=dt*3.8;const target=new THREE.Vector3(player.pos.x+Math.cos(b.angle)*1.8,player.pos.y+.1+Math.sin(b.angle*2)*.45,player.pos.z+Math.sin(b.angle)*1.8);b.vel.add(target.clone().sub(b.mesh.position).multiplyScalar(9*dt));b.vel.multiplyScalar(Math.max(0,1-2.2*dt));b.mesh.position.addScaledVector(b.vel,dt);for(const bm of blocks){if(!bm.userData.preview&&!bm.userData.decorative&&b.mesh.position.distanceTo(bm.position)<.92){const p=bm.position.clone();removeStaticBlock(bm);recordBlockDamage(bm);spawnSmallBurst(p,bm.material,8,5);b.vel.multiplyScalar(.8);break}}}b.mesh.rotation.x+=dt*8;b.mesh.rotation.z+=dt*6}if(hammerSlamActive&&player.onGround&&player.vel.y<=0){hammerSlamActive=false;const center=new THREE.Vector3(player.pos.x,Math.max(.7,player.pos.y-player.height/2+.2),player.pos.z);const ring=new THREE.Mesh(new THREE.RingGeometry(.6,1,48),new THREE.MeshBasicMaterial({color:0xffb12e,transparent:true,opacity:.95,side:THREE.DoubleSide}));ring.rotation.x=-Math.PI/2;ring.position.set(center.x,.56,center.z);scene.add(ring);const t0=performance.now();const anim=()=>{if(!ring.parent)return;const t=Math.min(1,(performance.now()-t0)/650);ring.scale.setScalar(1+10*t);ring.material.opacity=.95*(1-t);if(t<1)requestAnimationFrame(anim);else{scene.remove(ring);ring.geometry.dispose();ring.material.dispose()}};requestAnimationFrame(anim);smashArea(center,10,22);toast('IMPACTO! Área de 10 blocos destruída')}}
 function addToolSlot(kind){if(document.querySelector('[data-tool="'+kind+'"]'))return;const b=document.createElement('button');b.type='button';b.className='slot';b.dataset.tool=kind;b.setAttribute('aria-label',TOOL_CONFIG[kind].name+' equipada');const p={grenade:'<circle cx="32" cy="35" r="16" fill="#78934f" stroke="#263c2a" stroke-width="3"/><rect x="27" y="12" width="10" height="8" fill="#b5bec4"/>',tnt:'<rect x="13" y="21" width="38" height="31" fill="#c83d35" stroke="#652621" stroke-width="3"/><path d="M22 21V52M42 21V52" stroke="#f4d1a1" stroke-width="3"/>',rocket:'<path d="M32 5Q44 18 37 39L32 48L27 39Q20 18 32 5Z" fill="#55d9ff" stroke="#164a62" stroke-width="3"/><path d="M29 47L32 60L35 47" fill="#ff8b38"/>',wrecking:'<circle cx="32" cy="34" r="20" fill="#687786" stroke="#c4d0db" stroke-width="4"/><path d="M18 22L44 46M45 21L20 46" stroke="#34414d" stroke-width="4"/>',hammer:'<path d="M28 27L36 27L39 58L31 60Z" fill="#8e5b35"/><path d="M12 12L51 12L48 29L16 29Z" fill="#8e9aa5" stroke="#303b45" stroke-width="3"/>'};const pick='<g transform="rotate(-23 32 32)"><path d="M28 24L35 23L37 57Q33 62 29 58Z" fill="#9a6137"/><path d="M9 17Q11 12 17 12L30 16L41 18L54 10Q59 9 59 14L47 28L34 24L20 29Q12 29 9 23Z" fill="#b8c3cd" stroke="#303844" stroke-width="3"/></g>';b.innerHTML='<svg class="tool-svg" viewBox="0 0 64 64">'+(kind==='pickaxe'?pick:p[kind])+'</svg><div class="tool-cooldown" style="position:absolute;inset:auto 0 0;height:0;background:#b8c4d4a8"></div>';b.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation()});b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();selectTool(kind)});document.getElementById('inventory').appendChild(b)}
-function selectTool(kind){if(!ownedTools.has(kind))return;selectedTool=kind;document.querySelectorAll('#inventory .slot').forEach(s=>s.classList.toggle('selected',s.dataset.tool===kind));document.getElementById('hint').textContent=kind==='pickaxe'?'PICARETA · segure para golpear':kind==='hammer'?'MARRETA · segure para saltar e esmagar o chão':kind==='wrecking'?'BOLA DE DEMOLIÇÃO · lance e ela retorna orbitando':'SEGURE para usar '+TOOL_CONFIG[kind].name.toUpperCase()+' · cooldown '+TOOL_CONFIG[kind].cooldown+' s';viewPickaxe.visible=mode==='playing'&&!third&&kind==='pickaxe';worldPickaxe.visible=kind==='pickaxe'}
+function selectTool(kind){if(!ownedTools.has(kind))return;selectedTool=kind;document.querySelectorAll('#inventory .slot').forEach(s=>s.classList.toggle('selected',s.dataset.tool===kind));document.getElementById('hint').textContent=kind==='pickaxe'?'PICARETA · segure para golpear':kind==='hammer'?'MARRETA · segure para saltar e esmagar o chão':kind==='wrecking'?'BOLA DE DEMOLIÇÃO · lance e ela retorna orbitando':'SEGURE para usar '+TOOL_CONFIG[kind].name.toUpperCase()+' · cooldown '+TOOL_CONFIG[kind].cooldown+' s';syncToolModels()}
 function renderInventory(){for(const k of ['grenade','tnt','rocket','wrecking','hammer'])addToolSlot(k);document.querySelectorAll('#inventory .slot').forEach(s=>s.style.display=ownedTools.has(s.dataset.tool)?'grid':'none');if(!ownedTools.has(selectedTool))selectedTool='pickaxe';selectTool(selectedTool)}
 function renderShop(){
  const grid=document.getElementById('shopGrid');grid.innerHTML='';
@@ -553,14 +553,53 @@ function makePickaxe(){
  part(g,new THREE.BoxGeometry(.035,.25,.018),woodLight,-.008,-.12,.055).rotation.z=-.13;
  return g;
 }
-const viewPickaxe=makePickaxe();viewPickaxe.position.set(.48,-.42,-.78);viewPickaxe.rotation.set(-.27,-.38,-.42);camera.add(viewPickaxe);scene.add(camera);
+function makeToolModel(kind){
+ const g=new THREE.Group();
+ const steel=new THREE.MeshStandardMaterial({color:0x687888,metalness:.78,roughness:.3}),lightSteel=new THREE.MeshStandardMaterial({color:0xd2dbe2,metalness:.68,roughness:.24}),wood=new THREE.MeshStandardMaterial({color:0x8b5833,roughness:.75}),red=new THREE.MeshStandardMaterial({color:0xc83b32,roughness:.48}),green=new THREE.MeshStandardMaterial({color:0x657e43,roughness:.6}),black=new THREE.MeshStandardMaterial({color:0x303a44,metalness:.45,roughness:.4}),flame=new THREE.MeshStandardMaterial({color:0xff8b36,emissive:0xff4510,emissiveIntensity:1.4});
+ const add=(geo,material,x,y,z)=>{const m=new THREE.Mesh(geo,material);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;g.add(m);return m};
+ if(kind==='grenade'){
+  const body=add(new THREE.SphereGeometry(.19,16,12),green,0,.07,0);body.scale.set(.88,1.12,.88);
+  add(new THREE.CylinderGeometry(.065,.075,.09,10),steel,0,.275,0);add(new THREE.CylinderGeometry(.033,.033,.075,8),black,0,.345,0);
+  const lever=add(new THREE.BoxGeometry(.16,.025,.035),lightSteel,.045,.31,.015);lever.rotation.z=-.2;
+  const ring=add(new THREE.TorusGeometry(.047,.008,6,12),lightSteel,.075,.36,0);ring.rotation.x=Math.PI/2;
+ }else if(kind==='tnt'){
+  add(new THREE.BoxGeometry(.38,.32,.29),red,0,.035,0);
+  for(const x of [-.115,.115])add(new THREE.BoxGeometry(.035,.325,.302),lightSteel,x,.035,0);
+  add(new THREE.BoxGeometry(.13,.055,.12),black,0,.223,0);add(new THREE.CylinderGeometry(.025,.025,.12,8),wood,0,.29,0);add(new THREE.SphereGeometry(.035,8,6),flame,.035,.365,0);
+ }else if(kind==='rocket'){
+  add(new THREE.CylinderGeometry(.075,.09,.39,12),red,0,.03,0);add(new THREE.ConeGeometry(.075,.17,12),lightSteel,0,.31,0);add(new THREE.CylinderGeometry(.092,.092,.035,12),black,0,-.18,0);
+  for(let k=0;k<3;k++){const fin=add(new THREE.BoxGeometry(.13,.1,.025),steel,0,-.12,0);fin.rotation.y=k*Math.PI/3;fin.rotation.z=-.15}
+  add(new THREE.ConeGeometry(.052,.14,10),flame,0,-.27,0);g.rotation.x=-Math.PI/2;
+ }else if(kind==='wrecking'){
+  add(new THREE.CylinderGeometry(.025,.025,.28,8),black,0,.18,0);
+  for(let n=0;n<5;n++)add(new THREE.TorusGeometry(.033,.009,5,8),lightSteel,0,.12+n*.035,0);
+  add(new THREE.SphereGeometry(.24,18,14),steel,0,-.11,0);add(new THREE.TorusGeometry(.21,.017,6,16),lightSteel,0,-.11,0);
+  const cross=add(new THREE.BoxGeometry(.3,.035,.035),black,0,-.11,0);cross.rotation.y=.7;
+ }else if(kind==='hammer'){
+  const shaft=add(new THREE.CylinderGeometry(.035,.045,.52,10),wood,0,-.09,0);shaft.rotation.z=-.07;
+  add(new THREE.CylinderGeometry(.052,.052,.12,10),black,0,-.32,0);add(new THREE.BoxGeometry(.39,.18,.2),steel,0,.235,0);add(new THREE.BoxGeometry(.34,.035,.207),lightSteel,0,.318,0);
+  add(new THREE.CylinderGeometry(.025,.025,.025,8),black,-.18,.235,0);add(new THREE.CylinderGeometry(.025,.025,.025,8),black,.18,.235,0);
+ }
+ return g;
+}
+const viewPickaxe=makePickaxe();viewPickaxe.position.set(.46,-.40,-.78);viewPickaxe.scale.setScalar(.62);viewPickaxe.rotation.set(-.27,-.38,-.42);camera.add(viewPickaxe);scene.add(camera);
 const worldPickaxe=makePickaxe();worldPickaxe.scale.setScalar(.68);worldPickaxe.position.set(.12,-.18,.015);worldPickaxe.rotation.z=-.1;armR.add(worldPickaxe);
+const toolModelKinds=['grenade','tnt','rocket','wrecking','hammer'],viewToolModels={},worldToolModels={};
+for(const kind of toolModelKinds){const v=makeToolModel(kind);v.position.set(.43,-.32,-.78);v.scale.setScalar(kind==='rocket'?.86:.78);camera.add(v);viewToolModels[kind]=v;const w=makeToolModel(kind);w.position.set(.12,-.18,.015);w.scale.setScalar(.68);armR.add(w);worldToolModels[kind]=w}
+function syncToolModels(){
+ const inGame=mode==='playing',heldWrecking=!!(wreckingBall&&wreckingBall.thrown>0);
+ viewPickaxe.visible=inGame&&!third&&selectedTool==='pickaxe';worldPickaxe.visible=selectedTool==='pickaxe';
+ for(const kind of toolModelKinds){const held=kind!=='wrecking'||!heldWrecking;viewToolModels[kind].visible=inGame&&!third&&selectedTool===kind&&held;worldToolModels[kind].visible=selectedTool===kind&&held}
+}
 function updateHero(dt,running,now){
  hero.position.set(player.pos.x,player.pos.y-player.height/2,player.pos.z);hero.rotation.y=yaw+Math.PI;
  const t=now*.012*(sprintToggle?1.5:1),swing=running?Math.sin(t)*(sprintToggle?1:.68):0;
  legL.rotation.x=swing;legR.rotation.x=-swing;armL.rotation.x=-swing*.8;armR.rotation.x=swing*.8;torso.rotation.z=running?Math.sin(t*2)*.035:0;
- hero.visible=mode==='playing'&&third;viewPickaxe.visible=mode==='playing'&&!third;worldPickaxe.rotation.x=-.2+(attackSwing>0?Math.sin((1-attackSwing)*Math.PI)*1.1:Math.max(0,Math.sin(t))*.22);
+ hero.visible=mode==='playing'&&third;
+ worldPickaxe.rotation.x=-.2+(attackSwing>0?Math.sin((1-attackSwing)*Math.PI)*1.1:Math.max(0,Math.sin(t))*.22);
  viewPickaxe.rotation.x=-.27+(attackSwing>0?Math.sin((1-attackSwing)*Math.PI)*1.7:0);
+ for(const kind of toolModelKinds){viewToolModels[kind].rotation.z=(kind==='hammer'&&attackSwing>0)?Math.sin((1-attackSwing)*Math.PI)*.65:0}
+ syncToolModels();
 }
 function updateCamera(dt,now){
  const target=new THREE.Vector3(player.pos.x,player.pos.y+.25,player.pos.z);camDist=THREE.MathUtils.damp(camDist,targetDist,10,dt);
