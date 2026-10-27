@@ -79,7 +79,7 @@ button{font:inherit}
 #zoomOut{right:73px;bottom:max(112px,calc(env(safe-area-inset-bottom) + 112px));width:42px;height:42px;font-size:22px}
 #inventory{position:absolute;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:7px;pointer-events:auto}
 .slot{width:62px;height:62px;border-radius:13px;border:2px solid #ffffff7a;background:linear-gradient(145deg,#263447ee,#111827ee);box-shadow:0 6px 20px #0006;display:grid;place-items:center;position:relative;overflow:hidden;padding:0;pointer-events:auto}
-.slot.selected{border-color:#ffe08a;box-shadow:0 0 0 2px #ffb62944,0 0 20px #ffb62955}
+.slot.selected{border-color:#ffe08a;box-shadow:0 0 0 2px #ffb62944,0 0 20px #ffb62955}.shop-card{padding:12px;border-radius:14px;border:1px solid #ffffff2a;background:linear-gradient(145deg,#263448,#111723)}.shop-card h3{margin:6px 0}.shop-card p{font-size:10px;color:#bdc9d9;line-height:1.5;min-height:32px}.shop-buy{border:0;border-radius:9px;padding:9px 10px;font-weight:950;font-size:10px;background:linear-gradient(135deg,#ffcf67,#ff793c);color:#211a20}.shop-buy:disabled{background:#4a5665;color:#b8c1cc}@media(max-width:760px){#resultsScreen .screen-inner{padding:14px}#resultsScreen .level-grid{gap:8px}.shop-card{padding:8px}.shop-card p{font-size:9px}}
 .slot svg{width:49px;height:49px;filter:drop-shadow(2px 3px 1px #0008)}
 #cooldown{position:absolute;left:0;bottom:0;width:100%;height:0%;background:#b8c4d4a8;pointer-events:none;transition:height .025s linear}
 #hint{position:absolute;bottom:max(15px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);font-size:9px;letter-spacing:.1em;color:#dce5f1;background:#111827c9;padding:8px 12px;border-radius:30px;white-space:nowrap}
@@ -129,7 +129,7 @@ button{font:inherit}
   <div style="margin-top:17px"><button class="back-link" id="backHome" type="button">← MENU PRINCIPAL</button></div>
  </div>
 </div>
-<div id="hud" class="hud">
+<div id="resultsScreen" class="screen hidden"><div class="screen-inner" style="max-width:780px;text-align:center"><div class="eyebrow">OPERAÇÃO CONCLUÍDA</div><div class="brand-title" style="font-size:clamp(48px,9vw,88px);margin:16px auto 30px">WRECKED!</div><h2 id="resultTitle" class="screen-title">CASA DESTRUÍDA</h2><p id="resultSubtitle" style="color:#c7d3e2;font-size:13px;line-height:1.7">A estrutura cedeu. Cada bloco virou prejuízo.</p><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:24px 0"><div class="wallet"><small>DESTRUIÇÃO</small><strong id="resultPercent">99%</strong></div><div class="wallet"><small>PREJUÍZO</small><strong id="resultDamage">R$ 0</strong></div><div class="wallet"><small>GANHO</small><strong id="resultPayout">+R$ 0</strong></div></div><div style="font-size:10px;letter-spacing:.2em;font-weight:900;color:#ffcf83;margin:24px 0 12px">LOJA DE FERRAMENTAS</div><div id="shopGrid" class="level-grid"></div><div style="margin-top:22px"><button class="back-link" id="resultLevels" type="button">CONTINUAR PARA OS NÍVEIS →</button></div><div id="shopNotice" class="level-notice" role="status"></div></div></div><div id="hud" class="hud">
  <div class="hud-brand">BREAK<span style="color:#35c8ff">—</span>ME!</div>
  <div class="damage-panel"><div class="damage-head"><span>DANOS NO NÍVEL</span><strong id="damagePercent">0%</strong></div><div class="damage-bar"><div class="damage-fill" id="damageFill"></div></div><div class="loss-line">PREJUÍZO CAUSADO <span class="loss-value" id="lossValue">R$ 0</span></div></div>
  <div class="instructions">WASD mover · Mouse olhar<br>SEGURE clique esquerdo para usar<br>Shift correr · Espaço pular · Scroll câmera</div>
@@ -169,16 +169,17 @@ const palette={
 const ground=new THREE.Mesh(new THREE.BoxGeometry(200,1,200),mat(0x687b7a));ground.position.y=0;ground.receiveShadow=true;scene.add(ground);
 const grid=new THREE.GridHelper(200,100,0x77918f,0x607875);grid.position.y=.505;scene.add(grid);
 const cubeGeo=new THREE.BoxGeometry(1,1,1);
-const blocks=[],debris=[],fallingClusters=[],buildings=new Map();
+const blocks=[],debris=[],fallingClusters=[],buildings=new Map(),projectiles=[];
 let mode='menu',levelState=null,menuTimer=0,menuRunnerX=-13,toastTimer=0,cameraShake=0;
-let wallet=0,houseCleared=false,cityUnlocked=false,cityCleared=false;
+let wallet=0,houseCleared=false,cityUnlocked=false,cityCleared=false;const ownedTools=new Set(['pickaxe']);let selectedTool='pickaxe',resultPending=null,completionTimer=0,completionStarted=false,slowMotion=1;
 const STORAGE_KEY='break-me-progress-v2';
-try{const saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');wallet=Number(saved.wallet)||0;houseCleared=!!saved.houseCleared;cityUnlocked=!!saved.cityUnlocked||houseCleared;cityCleared=!!saved.cityCleared}catch(e){}
+try{const saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');wallet=Number(saved.wallet)||0;houseCleared=!!saved.houseCleared;cityUnlocked=!!saved.cityUnlocked||houseCleared;cityCleared=!!saved.cityCleared;if(Array.isArray(saved.ownedTools))saved.ownedTools.forEach(t=>ownedTools.add(t))}catch(e){}
 const toastEl=document.getElementById('toast');
 function toast(text){toastEl.textContent=text;toastEl.style.opacity='1';clearTimeout(toastTimer);toastTimer=setTimeout(()=>toastEl.style.opacity='0',1800)}
-function saveProgress(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify({wallet:wallet,houseCleared:houseCleared,cityUnlocked:cityUnlocked,cityCleared:cityCleared}))}catch(e){}}
+function saveProgress(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify({wallet:wallet,houseCleared:houseCleared,cityUnlocked:cityUnlocked,cityCleared:cityCleared,ownedTools:[...ownedTools]}))}catch(e){}}
 const currency=n=>'R$ '+Math.round(n).toLocaleString('pt-BR');
 function removeAllWorldEntities(){
+ for(const p of projectiles)scene.remove(p.mesh);projectiles.length=0;
  for(const b of blocks)scene.remove(b);blocks.length=0;
  for(const d of debris)scene.remove(d.mesh);debris.length=0;
  for(const cl of fallingClusters)scene.remove(cl.group);fallingClusters.length=0;
@@ -257,7 +258,7 @@ function createHouseLevel(){
  for(let x=-3;x<=3;x++)for(let z=-2;z<=2;z++)block(x,4,z,'roof',(x+z)%3===0?'roofB':'roofA',id,false);
  // A little chimney makes the roof silhouette easy to read and gives it another weak point.
  for(let y=5;y<=6;y++)for(const [x,z] of [[2,-1],[3,-1],[2,0],[3,0]])block(x,y,z,'chimney',y===6?'concrete':'brickB',id,false);
- levelState={id:'house',name:'Casa pequena',totalBlocks:blocks.length,destroyedCount:0,damageValue:0,startedAt:performance.now(),payoutClaimed:false,goal:80};
+ levelState={id:'house',name:'Casa pequena',totalBlocks:blocks.length,destroyedCount:0,damageValue:0,startedAt:performance.now(),payoutClaimed:false,goal:99};
  player.pos.set(0,1.5,7);player.vel.set(0,0,0);yaw=0;pitch=-.05;targetDist=0;camDist=0;third=false;
 }
 function buildCityBuilding(id,cx,cz,w,d,h,baseColor,preview=false){
@@ -334,7 +335,7 @@ const player={pos:new THREE.Vector3(0,1.5,7),vel:new THREE.Vector3(),radius:.29,
 let yaw=0,pitch=0,camDist=0,targetDist=0,third=false,sprintToggle=false;
 const keys=new Set();const isTouch=isTouchScreen;let locked=false;
 let pickaxeTimer=0,attackHeld=false,toolActive=false,chargeStarted=0,chargeStartX=0,chargeStartY=0,chargeCancelled=false,attackSwing=0;
-const PICKAXE_COOLDOWN=.25,TOOL_CHARGE_MS=600;
+const PICKAXE_COOLDOWN=.25,TOOL_CHARGE_MS=600;const TOOL_CONFIG={pickaxe:{cooldown:.25},grenade:{name:'Granada',cooldown:3,cost:450,radius:3.8,force:13},tnt:{name:'TNT',cooldown:7,cost:1100,radius:7.2,force:21}};let toolCooldown=0;
 const chargeRing=document.getElementById('chargeRing'),chargeProgress=document.getElementById('chargeProgress'),cooldownBar=document.getElementById('cooldown');
 const cross=document.getElementById('cross');
 function updateToolUIReset(){chargeRing.classList.remove('visible','ready');chargeProgress.style.strokeDashoffset='138.23';cooldownBar.style.height='0%';document.getElementById('sprint').setAttribute('aria-pressed','false');document.getElementById('sprint').innerHTML='CORRER<br>OFF';document.getElementById('sprint').style.background=''}
@@ -458,15 +459,10 @@ function updateDebris(dt){
  for(let i=debris.length-1;i>=0;i--){const d=debris[i];d.life-=dt;d.vel.y-=17*dt;d.mesh.position.addScaledVector(d.vel,dt);d.mesh.rotation.x+=d.spin.x*dt;d.mesh.rotation.y+=d.spin.y*dt;d.mesh.rotation.z+=d.spin.z*dt;if(d.mesh.position.y<.55){d.mesh.position.y=.55;if(d.vel.y<-.7){d.vel.y*=-d.bounce;d.vel.x*=.72;d.vel.z*=.72}else d.vel.y=0}if(d.life<=0){scene.remove(d.mesh);debris.splice(i,1)}}
 }
 function completeLevelIfReady(){
- if(mode!=='playing'||!levelState||fallingClusters.length)return;
- const pct=levelState.destroyedCount/Math.max(1,levelState.totalBlocks)*100;
- if(pct<levelState.goal)return;
- const name=levelState.name,payout=Math.round(levelState.damageValue);
- if(levelState.payoutClaimed)return;levelState.payoutClaimed=true;wallet+=payout;
- if(levelState.id==='house'){houseCleared=true;cityUnlocked=true}
- if(levelState.id==='city')cityCleared=true;
- saveProgress();const notice='NÍVEL CONCLUÍDO! '+name.toUpperCase()+' DESTRUÍDA · +'+currency(payout)+' NA SUA CONTA.';
- showLevels(notice);
+ if(mode!=='playing'||!levelState||completionStarted||fallingClusters.length||projectiles.length)return;
+ const pct=levelState.destroyedCount/Math.max(1,levelState.totalBlocks)*100;if(pct<levelState.goal||levelState.payoutClaimed)return;
+ levelState.payoutClaimed=true;completionStarted=true;completionTimer=3.2;slowMotion=.2;cameraShake=Math.max(cameraShake,.5);playBreakSound(2.2);
+ resultPending={id:levelState.id,name:levelState.name,percent:Math.min(100,Math.floor(pct)),damage:Math.round(levelState.damageValue),payout:Math.round(levelState.damageValue)};
 }
 const hero=new THREE.Group();scene.add(hero);
 const skin=mat(0xffc79e),shirt=mat(0x20b9d5),pants=mat(0x263858),shoe=mat(0x202331),hair=mat(0x4b2c22),eye=mat(0x171c2b);
@@ -521,19 +517,20 @@ function updateMenuRunner(dt,now){
  }
 }
 function animate(now){
- requestAnimationFrame(animate);const dt=Math.min((now-lastFrame)/1000,.033);lastFrame=now;
+ requestAnimationFrame(animate);const realDt=Math.min((now-lastFrame)/1000,.033);lastFrame=now;const dt=realDt*slowMotion;
  if(mode==='playing'){
-  stepPlayer(dt);updateCamera(dt,now);updateHero(dt,motion.lengthSq()>.05,now);
-  pickaxeTimer=Math.max(0,pickaxeTimer-dt);cooldownBar.style.height=(1-pickaxeTimer/PICKAXE_COOLDOWN)*100+'%';
-  attackSwing=Math.max(0,attackSwing-dt*5);updateToolCharge(now);if(toolActive&&attackHeld&&pickaxeTimer<=0)smashBlock();
-  updateFallClusters(dt);completeLevelIfReady();
- }else updateMenuRunner(dt,now);
+  if(!completionStarted){stepPlayer(dt);updateCamera(dt,now);updateHero(dt,motion.lengthSq()>.05,now)}
+  pickaxeTimer=Math.max(0,pickaxeTimer-realDt);toolCooldown=Math.max(0,toolCooldown-realDt);cooldownBar.style.height=(1-pickaxeTimer/Math.max(.01,TOOL_CONFIG[selectedTool]?.cooldown||PICKAXE_COOLDOWN))*100+'%';
+  attackSwing=Math.max(0,attackSwing-dt*5);if(!completionStarted){updateToolCharge(now);if(toolActive&&attackHeld&&pickaxeTimer<=0)smashBlock()}
+  updateProjectiles(dt);updateFallClusters(dt);completeLevelIfReady();
+  if(completionStarted){completionTimer-=realDt;slowMotion=Math.min(1,slowMotion+realDt*.35);cameraShake=Math.max(0,cameraShake-realDt*.65);if(completionTimer<=0)revealResults()}
+ }else updateMenuRunner(realDt,now);
  updateDebris(dt);renderer.render(scene,camera);
 }
 let lastFrame=performance.now();
 function startPreview(){generatePreviewCity();hero.visible=true;hero.position.set(-13,0,8);menuRunnerX=-13;mode='menu';}
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,isTouchScreen()?1.45:1.8))});
-startPreview();updateLevelCards();requestAnimationFrame(animate);
+startPreview();updateLevelCards();renderInventory();requestAnimationFrame(animate);
 </script>
 </body>
 </html>
