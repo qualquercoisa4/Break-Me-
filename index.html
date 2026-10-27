@@ -142,7 +142,7 @@ button{font:inherit}
  <button class="mobile-button" id="sprint" type="button" aria-pressed="false">CORRER<br>OFF</button>
  <button class="mobile-button" id="jump" type="button">PULAR</button><button class="mobile-button" id="zoomIn" type="button" aria-label="Aproximar câmera">+</button><button class="mobile-button" id="zoomOut" type="button" aria-label="Afastar câmera">−</button>
 </div>
-<div id="inventory"><button class="slot selected" id="pickaxeSlot" type="button" aria-label="Picareta velha equipada">
+<div id="inventory"><button class="slot selected" id="pickaxeSlot" data-tool="pickaxe" type="button" aria-label="Picareta velha equipada">
  <svg viewBox="0 0 64 64" aria-hidden="true">
   <defs><linearGradient id="steel" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f2f5f4"/><stop offset=".22" stop-color="#9da8b2"/><stop offset=".56" stop-color="#515e6b"/><stop offset=".8" stop-color="#d6dce0"/><stop offset="1" stop-color="#36404b"/></linearGradient><linearGradient id="timber" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#4b2718"/><stop offset=".25" stop-color="#9a6137"/><stop offset=".49" stop-color="#d39a5f"/><stop offset=".71" stop-color="#85502f"/><stop offset="1" stop-color="#3c2118"/></linearGradient></defs>
   <g transform="rotate(-23 32 32)"><path d="M28 24 L35 23 L37 57 Q33 62 29 58Z" fill="url(#timber)" stroke="#332018" stroke-width="1.8"/><path d="M29 43 L36 42 M29 47 L36 46" stroke="#e7ba83" stroke-width="1.1" opacity=".8"/><path d="M27 27 L36 25 L37 31 L28 33Z" fill="#3c4651" stroke="#252b33" stroke-width="1"/><path d="M9 17 Q11 12 17 12 L30 16 L41 18 L54 10 Q59 9 59 14 L47 28 L34 24 L20 29 Q12 29 9 23Z" fill="url(#steel)" stroke="#303844" stroke-width="2.5"/><path d="M11 17 L28 19 L39 21 L31 23 L19 24 L13 22Z" fill="#f7f9f6" opacity=".8"/><path d="M42 18 L54 11 L57 13 L46 25 L39 23Z" fill="#303a45"/><path d="M14 17 L29 19 L37 22 L31 23 L17 21Z" fill="#d9e0e4"/><circle cx="31" cy="25" r="2" fill="#bdc7ce" stroke="#3c4651" stroke-width="1"/></g>
@@ -323,7 +323,7 @@ document.getElementById('cityCard').addEventListener('click',e=>{e.preventDefaul
 function startLevel(which){
  if(which==='city'&&!cityUnlocked){toast('Nível bloqueado');return}
  if(which==='house')createHouseLevel();else createProceduralCity(false);
- if(which==='city')levelState={id:'city',name:'Pequena cidade',totalBlocks:blocks.filter(b=>!b.userData.decorative).length,destroyedCount:0,damageValue:0,startedAt:performance.now(),payoutClaimed:false,goal:80};
+ if(which==='city')levelState={id:'city',name:'Pequena cidade',totalBlocks:blocks.filter(b=>!b.userData.decorative).length,destroyedCount:0,damageValue:0,startedAt:performance.now(),payoutClaimed:false,goal:95};
  levelState.totalBlocks=blocks.filter(b=>!b.userData.preview&&!b.userData.decorative).length;
  showScreen('__game__');mode='playing'; // Hide all menu layers before gameplay input is enabled.
  document.getElementById('hud').classList.add('on');document.getElementById('mobile').style.display=isTouchScreen()?'block':'none';document.getElementById('menuScreen').classList.add('hidden');document.getElementById('levelsScreen').classList.add('hidden');
@@ -335,7 +335,7 @@ const player={pos:new THREE.Vector3(0,1.5,7),vel:new THREE.Vector3(),radius:.29,
 let yaw=0,pitch=0,camDist=0,targetDist=0,third=false,sprintToggle=false;
 const keys=new Set();const isTouch=isTouchScreen;let locked=false;
 let pickaxeTimer=0,attackHeld=false,toolActive=false,chargeStarted=0,chargeStartX=0,chargeStartY=0,chargeCancelled=false,attackSwing=0;
-const PICKAXE_COOLDOWN=.25,TOOL_CHARGE_MS=600;const TOOL_CONFIG={pickaxe:{cooldown:.25},grenade:{name:'Granada',cooldown:3,cost:450,radius:3.8,force:13},tnt:{name:'TNT',cooldown:7,cost:1100,radius:7.2,force:21}};let toolCooldown=0;
+const PICKAXE_COOLDOWN=.25,TOOL_CHARGE_MS=600;const TOOL_CONFIG={pickaxe:{name:'Picareta',cooldown:.25,cost:0},grenade:{name:'Granada',cooldown:3,cost:250,radius:3.8,force:13},tnt:{name:'TNT',cooldown:7,cost:600,radius:7.2,force:21},rocket:{name:'Lança-foguetes',cooldown:1,cost:1200,radius:4.8,force:17},wrecking:{name:'Bola de demolição',cooldown:15,cost:1800,radius:3.2,force:18},hammer:{name:'Marreta',cooldown:20,cost:900,radius:10,force:22}};let toolCooldown=0;let wreckingBall=null,hammerSlamActive=false;
 const chargeRing=document.getElementById('chargeRing'),chargeProgress=document.getElementById('chargeProgress'),cooldownBar=document.getElementById('cooldown');
 const cross=document.getElementById('cross');
 function updateToolUIReset(){chargeRing.classList.remove('visible','ready');chargeProgress.style.strokeDashoffset='138.23';cooldownBar.style.height='0%';document.getElementById('sprint').setAttribute('aria-pressed','false');document.getElementById('sprint').innerHTML='CORRER<br>OFF';document.getElementById('sprint').style.background=''}
@@ -462,50 +462,48 @@ function updateDebris(dt){
 
 function launchExplosive(kind){
  const cfg=TOOL_CONFIG[kind];if(!cfg||!ownedTools.has(kind))return;
+ if(kind==='wrecking'){launchWreckingBall();return}if(kind==='hammer'){launchHammer();return}
  if(toolCooldown>0){toast('Aguarde '+toolCooldown.toFixed(1)+' s');return}
  toolCooldown=cfg.cooldown;pickaxeTimer=cfg.cooldown;
- const m=new THREE.Mesh(kind==='tnt'?new THREE.BoxGeometry(.34,.34,.34):new THREE.SphereGeometry(.16,12,10),new THREE.MeshStandardMaterial({color:kind==='tnt'?0xd43b36:0x71894c,roughness:.48,metalness:.1,emissive:kind==='tnt'?0x390000:0x071400}));
+ const m=new THREE.Mesh(kind==='tnt'?new THREE.BoxGeometry(.34,.34,.34):kind==='rocket'?new THREE.CylinderGeometry(.09,.13,.62,10):new THREE.SphereGeometry(.16,12,10),new THREE.MeshStandardMaterial({color:kind==='tnt'?0xd43b36:kind==='rocket'?0x55d9ff:0x71894c,roughness:.48,metalness:.1,emissive:kind==='tnt'?0x390000:kind==='rocket'?0x063344:0x071400}));
  m.castShadow=true;const dir=new THREE.Vector3();camera.getWorldDirection(dir);m.position.copy(camera.position).addScaledVector(dir,.8);m.position.y-=.12;scene.add(m);
- projectiles.push({kind,mesh:m,vel:dir.multiplyScalar(kind==='tnt'?12:10).add(new THREE.Vector3(0,2.8,0)),life:kind==='tnt'?1.65:1.25,radius:cfg.radius,force:cfg.force});
- playBreakSound(.45);toast(kind==='tnt'?'TNT lançada!':'Granada lançada!');
+ projectiles.push({kind,mesh:m,vel:dir.multiplyScalar(kind==='rocket'?34:kind==='tnt'?12:10).add(kind==='rocket'?new THREE.Vector3():new THREE.Vector3(0,2.8,0)),life:kind==='rocket'?2.2:kind==='tnt'?1.65:1.25,radius:cfg.radius,force:cfg.force});
+ playBreakSound(.45);toast(kind==='rocket'?'Foguete disparado!':kind==='tnt'?'TNT lançada!':'Granada lançada!');
 }
 function explodeProjectile(p){
- const center=p.mesh.position.clone(),isTnt=p.kind==='tnt';scene.remove(p.mesh);
- const light=new THREE.PointLight(isTnt?0xff5b21:0xffc45b,isTnt?13:7,isTnt?25:13);light.position.copy(center);scene.add(light);
- const shell=new THREE.Mesh(new THREE.SphereGeometry(.5,18,14),new THREE.MeshBasicMaterial({color:isTnt?0xff612e:0xffd16c,transparent:true,opacity:.85,wireframe:true}));shell.position.copy(center);scene.add(shell);
+ const center=p.mesh.position.clone(),isTnt=p.kind==='tnt',isRocket=p.kind==='rocket';scene.remove(p.mesh);
+ const light=new THREE.PointLight(isTnt?0xff5b21:isRocket?0x55d9ff:0xffc45b,isTnt?13:isRocket?10:7,isTnt?25:isRocket?18:13);light.position.copy(center);scene.add(light);
+ const shell=new THREE.Mesh(new THREE.SphereGeometry(.5,18,14),new THREE.MeshBasicMaterial({color:isTnt?0xff612e:isRocket?0x55d9ff:0xffd16c,transparent:true,opacity:.85,wireframe:true}));shell.position.copy(center);scene.add(shell);
  const started=performance.now(),duration=isTnt?560:360;
  const blastAnim=()=>{if(!shell.parent)return;const t=Math.min(1,(performance.now()-started)/duration);shell.scale.setScalar(1+p.radius*2*t);shell.material.opacity=.85*(1-t);light.intensity=(isTnt?13:7)*(1-t);if(t<1)requestAnimationFrame(blastAnim);else{scene.remove(shell);shell.geometry.dispose();shell.material.dispose();scene.remove(light)}};
- requestAnimationFrame(blastAnim);cameraShake=Math.max(cameraShake,isTnt?.8:.4);playBreakSound(isTnt?2.8:1.8);
+ requestAnimationFrame(blastAnim);cameraShake=Math.max(cameraShake,isTnt?.8:isRocket?.55:.4);playBreakSound(isTnt?2.8:isRocket?2.1:1.8);
  const hit=blocks.filter(b=>!b.userData.preview&&!b.userData.decorative&&b.position.distanceTo(center)<=p.radius),ids=new Set();
  for(const b of hit){
   const dist=b.position.distanceTo(center),ratio=1-dist/p.radius;if(b.userData.structureId)ids.add(b.userData.structureId);
   removeStaticBlock(b);recordBlockDamage(b);let dir=b.position.clone().sub(center);if(dir.lengthSq()<.01)dir.set(Math.random()-.5,.8,Math.random()-.5);dir.normalize();dir.y=Math.max(.25,dir.y);
-  for(let j=0;j<(isTnt?3:2);j++)makeDebrisPiece(b.position.clone(),b.material,.13+Math.random()*.23,dir.clone().add(new THREE.Vector3((Math.random()-.5)*.7,Math.random()*.6,(Math.random()-.5)*.7)).normalize().multiplyScalar(p.force*(.5+ratio)),.8+Math.random());
+  for(let j=0;j<(isTnt?3:isRocket?3:2);j++)makeDebrisPiece(b.position.clone(),b.material,.13+Math.random()*.23,dir.clone().add(new THREE.Vector3((Math.random()-.5)*.7,Math.random()*.6,(Math.random()-.5)*.7)).normalize().multiplyScalar(p.force*(.5+ratio)),.8+Math.random());
  }
  for(const id of ids){const stat=buildings.get(id);if(!stat)continue;stat.foundationRemaining=blocks.filter(b=>b.userData.structureId===id&&b.userData.foundation).length;if(!stat.collapsed&&stat.foundationRemaining<=stat.foundationTotal*.55)collapseStructure(id);else if(!stat.collapsed)detachUnsupported(id)}
  const debrisMat=new THREE.MeshStandardMaterial({color:isTnt?0xff7134:0xc9a56c,roughness:1});
- for(let i=0;i<(isTnt?44:22);i++){const dir=new THREE.Vector3(Math.random()-.5,Math.random()+.2,Math.random()-.5).normalize();makeDebrisPiece(center.clone(),debrisMat,.08+Math.random()*.13,dir.multiplyScalar(p.force*(.3+Math.random()*.65)),.4+Math.random()*.45)}
+ for(let i=0;i<(isTnt?44:isRocket?30:22);i++){const dir=new THREE.Vector3(Math.random()-.5,Math.random()+.2,Math.random()-.5).normalize();makeDebrisPiece(center.clone(),debrisMat,.08+Math.random()*.13,dir.multiplyScalar(p.force*(.3+Math.random()*.65)),.4+Math.random()*.45)}
 }
 function updateProjectiles(dt){
- for(let i=projectiles.length-1;i>=0;i--){const p=projectiles[i];p.life-=dt;p.vel.y-=9.8*dt;p.mesh.position.addScaledVector(p.vel,dt);p.mesh.rotation.x+=dt*8;p.mesh.rotation.z+=dt*10;let impact=false;
-  if(p.mesh.position.y<=.68){p.mesh.position.y=.68;p.vel.y=Math.abs(p.vel.y)*.3;p.vel.x*=.7;p.vel.z*=.7;if(Math.abs(p.vel.y)<1.1)impact=true}
+ for(let i=projectiles.length-1;i>=0;i--){const p=projectiles[i];p.life-=dt;if(p.kind==='rocket'){p.mesh.position.addScaledVector(p.vel,dt);p.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),p.vel.clone().normalize());}else{p.vel.y-=9.8*dt;p.mesh.position.addScaledVector(p.vel,dt);p.mesh.rotation.x+=dt*8;p.mesh.rotation.z+=dt*10;}let impact=false;
+  if(p.kind!=='rocket'&&p.mesh.position.y<=.68){p.mesh.position.y=.68;p.vel.y=Math.abs(p.vel.y)*.3;p.vel.x*=.7;p.vel.z*=.7;if(Math.abs(p.vel.y)<1.1)impact=true}
   for(const b of blocks){if(!b.userData.preview&&!b.userData.decorative&&p.mesh.position.distanceTo(b.position)<.78){impact=true;break}}
   if(impact||p.life<=0){explodeProjectile(p);projectiles.splice(i,1)}
  }
 }
-function addToolSlot(kind){
- if(document.querySelector('[data-tool="'+kind+'"]'))return;const b=document.createElement('button');b.type='button';b.className='slot';b.dataset.tool=kind;b.setAttribute('aria-label',TOOL_CONFIG[kind].name+' equipada');
- b.innerHTML=kind==='grenade'?'<svg class="tool-svg" viewBox="0 0 64 64"><path d="M25 14H40V20H25Z" fill="#b5bec4" stroke="#303b45" stroke-width="2"/><path d="M29 8H37V15H29Z" fill="#697784" stroke="#303b45" stroke-width="2"/><path d="M24 20Q16 24 18 37Q18 51 32 53Q46 51 46 37Q48 24 40 20Z" fill="#6c8a4f" stroke="#263c2a" stroke-width="3"/><path d="M22 29L28 27M38 35L44 33M26 43L33 45" stroke="#a7bd75" stroke-width="3" stroke-linecap="round"/><path d="M38 9Q47 5 49 14" fill="none" stroke="#e8a14d" stroke-width="3"/></svg><div class="tool-cooldown" style="position:absolute;inset:auto 0 0;height:0;background:#b8c4d4a8"></div>':'<svg class="tool-svg" viewBox="0 0 64 64"><path d="M13 23H49V49H13Z" fill="#c83d35" stroke="#652621" stroke-width="3"/><path d="M13 23L20 16H56L49 23Z" fill="#e45a43" stroke="#652621" stroke-width="2"/><path d="M49 23L56 16V42L49 49Z" fill="#8f2929" stroke="#652621" stroke-width="2"/><path d="M22 23V49M40 23V49" stroke="#e9c7a0" stroke-width="3"/><path d="M27 14H37V19H27Z" fill="#e0b86a" stroke="#652621" stroke-width="2"/></svg><div class="tool-cooldown" style="position:absolute;inset:auto 0 0;height:0;background:#b8c4d4a8"></div>';
- b.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation()});b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();selectTool(kind)});document.getElementById('inventory').appendChild(b);
-}
-function selectTool(kind){
- if(!ownedTools.has(kind))return;selectedTool=kind;document.querySelectorAll('#inventory .slot').forEach(s=>s.classList.toggle('selected',s.dataset.tool===kind));
- document.getElementById('hint').textContent=kind==='pickaxe'?'SEGURE para carregar · mova a mira para cancelar':'SEGURE para lançar '+TOOL_CONFIG[kind].name.toUpperCase()+' · '+TOOL_CONFIG[kind].cooldown+' s de cooldown';
-}
-function renderInventory(){addToolSlot('grenade');addToolSlot('tnt');document.querySelectorAll('#inventory .slot').forEach(s=>s.style.display=ownedTools.has(s.dataset.tool)?'grid':'none');if(!ownedTools.has(selectedTool))selectedTool='pickaxe';selectTool(selectedTool)}
+function launchWreckingBall(){if(toolCooldown>0){toast('Aguarde '+toolCooldown.toFixed(1)+' s');return}toolCooldown=15;pickaxeTimer=15;if(!wreckingBall){const mesh=new THREE.Mesh(new THREE.SphereGeometry(.62,18,14),new THREE.MeshStandardMaterial({color:0x596674,metalness:.8,roughness:.28}));mesh.castShadow=true;scene.add(mesh);wreckingBall={mesh,vel:new THREE.Vector3(),thrown:0,angle:0}}const dir=new THREE.Vector3();camera.getWorldDirection(dir);wreckingBall.thrown=1.45;wreckingBall.vel.copy(dir).multiplyScalar(19).add(new THREE.Vector3(0,2,0));toast('Bola de demolição lançada!')}
+function launchHammer(){if(toolCooldown>0){toast('Aguarde '+toolCooldown.toFixed(1)+' s');return}toolCooldown=20;pickaxeTimer=20;hammerSlamActive=true;player.vel.y=15;player.onGround=false;toast('Marreta: salto de impacto!')}
+function smashArea(center,radius,force){const mesh=new THREE.Mesh(new THREE.SphereGeometry(.12,10,8),new THREE.MeshBasicMaterial({color:0xffb83e}));mesh.position.copy(center);scene.add(mesh);explodeProjectile({kind:'tnt',mesh,life:0,radius,force});cameraShake=Math.max(cameraShake,.9);playBreakSound(3)}
+function updateSpecialTools(dt){if(wreckingBall&&mode==='playing'){const b=wreckingBall;if(b.thrown>0){b.thrown-=dt;b.vel.y-=9.8*dt;b.mesh.position.addScaledVector(b.vel,dt);for(const bm of blocks){if(!bm.userData.preview&&!bm.userData.decorative&&b.mesh.position.distanceTo(bm.position)<.95){const p=bm.position.clone();removeStaticBlock(bm);recordBlockDamage(bm);spawnSmallBurst(p,bm.material,12,7);impactFlash(p);b.vel.multiplyScalar(.78);break}}if(b.mesh.position.y<.75){b.mesh.position.y=.75;b.vel.y=Math.abs(b.vel.y)*.45;b.vel.x*=.75;b.vel.z*=.75}}else{b.angle+=dt*3.8;const target=new THREE.Vector3(player.pos.x+Math.cos(b.angle)*1.8,player.pos.y+.1+Math.sin(b.angle*2)*.45,player.pos.z+Math.sin(b.angle)*1.8);b.vel.add(target.clone().sub(b.mesh.position).multiplyScalar(9*dt));b.vel.multiplyScalar(Math.max(0,1-2.2*dt));b.mesh.position.addScaledVector(b.vel,dt);for(const bm of blocks){if(!bm.userData.preview&&!bm.userData.decorative&&b.mesh.position.distanceTo(bm.position)<.92){const p=bm.position.clone();removeStaticBlock(bm);recordBlockDamage(bm);spawnSmallBurst(p,bm.material,8,5);b.vel.multiplyScalar(.8);break}}}b.mesh.rotation.x+=dt*8;b.mesh.rotation.z+=dt*6}if(hammerSlamActive&&player.onGround&&player.vel.y<=0){hammerSlamActive=false;const center=new THREE.Vector3(player.pos.x,Math.max(.7,player.pos.y-player.height/2+.2),player.pos.z);const ring=new THREE.Mesh(new THREE.RingGeometry(.6,1,48),new THREE.MeshBasicMaterial({color:0xffb12e,transparent:true,opacity:.95,side:THREE.DoubleSide}));ring.rotation.x=-Math.PI/2;ring.position.set(center.x,.56,center.z);scene.add(ring);const t0=performance.now();const anim=()=>{if(!ring.parent)return;const t=Math.min(1,(performance.now()-t0)/650);ring.scale.setScalar(1+10*t);ring.material.opacity=.95*(1-t);if(t<1)requestAnimationFrame(anim);else{scene.remove(ring);ring.geometry.dispose();ring.material.dispose()}};requestAnimationFrame(anim);smashArea(center,10,22);toast('IMPACTO! Área de 10 blocos destruída')}}
+function addToolSlot(kind){if(document.querySelector('[data-tool="'+kind+'"]'))return;const b=document.createElement('button');b.type='button';b.className='slot';b.dataset.tool=kind;b.setAttribute('aria-label',TOOL_CONFIG[kind].name+' equipada');const p={grenade:'<circle cx="32" cy="35" r="16" fill="#78934f" stroke="#263c2a" stroke-width="3"/><rect x="27" y="12" width="10" height="8" fill="#b5bec4"/>',tnt:'<rect x="13" y="21" width="38" height="31" fill="#c83d35" stroke="#652621" stroke-width="3"/><path d="M22 21V52M42 21V52" stroke="#f4d1a1" stroke-width="3"/>',rocket:'<path d="M32 5Q44 18 37 39L32 48L27 39Q20 18 32 5Z" fill="#55d9ff" stroke="#164a62" stroke-width="3"/><path d="M29 47L32 60L35 47" fill="#ff8b38"/>',wrecking:'<circle cx="32" cy="34" r="20" fill="#687786" stroke="#c4d0db" stroke-width="4"/><path d="M18 22L44 46M45 21L20 46" stroke="#34414d" stroke-width="4"/>',hammer:'<path d="M28 27L36 27L39 58L31 60Z" fill="#8e5b35"/><path d="M12 12L51 12L48 29L16 29Z" fill="#8e9aa5" stroke="#303b45" stroke-width="3"/>'};const pick='<g transform="rotate(-23 32 32)"><path d="M28 24L35 23L37 57Q33 62 29 58Z" fill="#9a6137"/><path d="M9 17Q11 12 17 12L30 16L41 18L54 10Q59 9 59 14L47 28L34 24L20 29Q12 29 9 23Z" fill="#b8c3cd" stroke="#303844" stroke-width="3"/></g>';b.innerHTML='<svg class="tool-svg" viewBox="0 0 64 64">'+(kind==='pickaxe'?pick:p[kind])+'</svg><div class="tool-cooldown" style="position:absolute;inset:auto 0 0;height:0;background:#b8c4d4a8"></div>';b.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation()});b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();selectTool(kind)});document.getElementById('inventory').appendChild(b)}
+function selectTool(kind){if(!ownedTools.has(kind))return;selectedTool=kind;document.querySelectorAll('#inventory .slot').forEach(s=>s.classList.toggle('selected',s.dataset.tool===kind));document.getElementById('hint').textContent=kind==='pickaxe'?'PICARETA · segure para golpear':kind==='hammer'?'MARRETA · segure para saltar e esmagar o chão':kind==='wrecking'?'BOLA DE DEMOLIÇÃO · lance e ela retorna orbitando':'SEGURE para usar '+TOOL_CONFIG[kind].name.toUpperCase()+' · cooldown '+TOOL_CONFIG[kind].cooldown+' s';viewPickaxe.visible=mode==='playing'&&!third&&kind==='pickaxe';worldPickaxe.visible=kind==='pickaxe'}
+function renderInventory(){for(const k of ['grenade','tnt','rocket','wrecking','hammer'])addToolSlot(k);document.querySelectorAll('#inventory .slot').forEach(s=>s.style.display=ownedTools.has(s.dataset.tool)?'grid':'none');if(!ownedTools.has(selectedTool))selectedTool='pickaxe';selectTool(selectedTool)}
 function renderShop(){
  const grid=document.getElementById('shopGrid');grid.innerHTML='';
- for(const t of [{id:'grenade',icon:'💣',title:'Granada',desc:'Explosão rápida, raio médio e fragmentos arremessados.',cost:450},{id:'tnt',icon:'🧨',title:'TNT',desc:'Explosão pesada, raio enorme e uma chuva de destroços.',cost:1100}]){
+ for(const t of [{id:'grenade',icon:'💣',title:'Granada',desc:'Explosão rápida, raio médio e fragmentos arremessados.',cost:250},{id:'tnt',icon:'🧨',title:'TNT',desc:'Explosão pesada, raio enorme e uma chuva de destroços.',cost:600},{id:'rocket',icon:'🚀',title:'Lança-foguetes',desc:'Projétil veloz em linha reta e explosão de impacto. Recarga de 1 segundo.',cost:1200},{id:'wrecking',icon:'⚙️',title:'Bola de demolição',desc:'Lance a esfera pesada; ela retorna orbitando e destrói blocos no trajeto.',cost:1800},{id:'hammer',icon:'🔨',title:'Marreta',desc:'Salto potente e impacto no chão com onda de choque de raio 10.',cost:900}]){
   const owned=ownedTools.has(t.id),can=wallet>=t.cost,card=document.createElement('div');card.className='shop-card';card.innerHTML='<div style="font-size:28px">'+t.icon+'</div><h3>'+t.title+'</h3><p>'+t.desc+'</p><button class="shop-buy" type="button" '+(owned||!can?'disabled':'')+'>'+(owned?'COMPRADA ✓':can?'COMPRAR · '+currency(t.cost):'FALTAM '+currency(t.cost-wallet))+'</button>';
   card.querySelector('button').addEventListener('click',()=>{if(ownedTools.has(t.id)||wallet<t.cost)return;wallet-=t.cost;ownedTools.add(t.id);saveProgress();document.getElementById('walletAmount').textContent=currency(wallet);renderShop();renderInventory();const n=document.getElementById('shopNotice');n.textContent=t.title+' adicionada ao inventário.';n.classList.add('on');playBreakSound(.7)});grid.appendChild(card);
  }
@@ -523,7 +521,7 @@ function completeLevelIfReady(){
  if(mode!=='playing'||!levelState||completionStarted||fallingClusters.length||projectiles.length)return;
  const pct=levelState.destroyedCount/Math.max(1,levelState.totalBlocks)*100;if(pct<levelState.goal||levelState.payoutClaimed)return;
  levelState.payoutClaimed=true;completionStarted=true;completionTimer=3.2;slowMotion=.2;cameraShake=Math.max(cameraShake,.5);playBreakSound(2.2);
- resultPending={id:levelState.id,name:levelState.name,percent:Math.min(100,Math.floor(pct)),damage:Math.round(levelState.damageValue),payout:Math.round(levelState.damageValue)};
+ resultPending={id:levelState.id,name:levelState.name,percent:Math.min(100,Math.floor(pct)),damage:Math.round(levelState.damageValue),payout:Math.max(150,Math.round(levelState.damageValue*.22))};
 }
 const hero=new THREE.Group();scene.add(hero);
 const skin=mat(0xffc79e),shirt=mat(0x20b9d5),pants=mat(0x263858),shoe=mat(0x202331),hair=mat(0x4b2c22),eye=mat(0x171c2b);
@@ -583,7 +581,7 @@ function animate(now){
   if(!completionStarted){stepPlayer(dt);updateCamera(dt,now);updateHero(dt,motion.lengthSq()>.05,now)}
   pickaxeTimer=Math.max(0,pickaxeTimer-realDt);toolCooldown=Math.max(0,toolCooldown-realDt);cooldownBar.style.height=(1-pickaxeTimer/Math.max(.01,TOOL_CONFIG[selectedTool]?.cooldown||PICKAXE_COOLDOWN))*100+'%';
   attackSwing=Math.max(0,attackSwing-dt*5);if(!completionStarted){updateToolCharge(now);if(toolActive&&attackHeld&&pickaxeTimer<=0)smashBlock()}
-  updateProjectiles(dt);updateFallClusters(dt);completeLevelIfReady();
+  updateProjectiles(dt);updateSpecialTools(dt);updateFallClusters(dt);completeLevelIfReady();
   if(completionStarted){completionTimer-=realDt;slowMotion=Math.min(1,slowMotion+realDt*.35);cameraShake=Math.max(0,cameraShake-realDt*.65);if(completionTimer<=0)revealResults()}
  }else updateMenuRunner(realDt,now);
  updateDebris(dt);renderer.render(scene,camera);
