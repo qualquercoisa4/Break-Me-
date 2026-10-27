@@ -321,7 +321,7 @@ function startLevel(which){
  if(which==='house')createHouseLevel();else createProceduralCity(false);
  if(which==='city')levelState={id:'city',name:'Pequena cidade',totalBlocks:blocks.filter(b=>!b.userData.decorative).length,destroyedCount:0,damageValue:0,startedAt:performance.now(),payoutClaimed:false,goal:80};
  levelState.totalBlocks=blocks.filter(b=>!b.userData.preview&&!b.userData.decorative).length;
- mode='playing';showScreen('__game__'); // showScreen hides overlays; HUD is enabled below.
+ showScreen('__game__');mode='playing'; // Hide all menu layers before gameplay input is enabled.
  document.getElementById('hud').classList.add('on');document.getElementById('mobile').style.display=isTouchScreen()?'block':'none';document.getElementById('menuScreen').classList.add('hidden');document.getElementById('levelsScreen').classList.add('hidden');
  player.pos.y=1.5;player.vel.set(0,0,0);if(which==='house')player.pos.set(0,1.5,7);else player.pos.set(0,1.5,19);
  yaw=0;pitch=-.05;targetDist=0;camDist=0;third=false;sprintToggle=false;toolActive=false;attackHeld=false;pickaxeTimer=0;updateToolUIReset();updateDamageUI();
@@ -342,6 +342,7 @@ function beginToolHold(x,y){
 function cancelToolCharge(){if(toolActive||!attackHeld)return;chargeCancelled=true;attackHeld=false;chargeRing.classList.remove('visible','ready');chargeProgress.style.strokeDashoffset='138.23'}
 function endToolHold(){attackHeld=false;toolActive=false;chargeCancelled=false;chargeRing.classList.remove('visible','ready');chargeProgress.style.strokeDashoffset='138.23'}
 function updateToolCharge(now){if(!attackHeld||chargeCancelled||toolActive)return;const p=THREE.MathUtils.clamp((now-chargeStarted)/TOOL_CHARGE_MS,0,1);chargeProgress.style.strokeDashoffset=String(138.23*(1-p));if(p>=1){toolActive=true;chargeRing.classList.remove('visible');chargeRing.classList.add('ready');setTimeout(()=>chargeRing.classList.remove('ready'),120)}}
+renderer.domElement.addEventListener('click',()=>{if(mode==='playing'&&!isTouchScreen()&&!locked)renderer.domElement.requestPointerLock?.()});
 document.addEventListener('pointerlockchange',()=>locked=document.pointerLockElement===renderer.domElement);
 document.addEventListener('pointerdown',e=>{
  if(mode!=='playing'||e.button!==0&&e.pointerType==='mouse')return;
@@ -393,8 +394,8 @@ function stepPlayer(dt){
  let sd=(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0)+stickX;
  fwd.set(-Math.sin(yaw),0,-Math.cos(yaw));right.set(Math.cos(yaw),0,-Math.sin(yaw));motion.copy(fwd).multiplyScalar(fw).addScaledVector(right,sd);if(motion.lengthSq()>1)motion.normalize();
  const speed=sprintToggle?8.1:5.3,feet0=player.pos.y-player.height/2;
- let nx=player.pos.x+motion.x*speed*dt;if(!solidAt(nx,player.pos.z,feet0,feet0+player.height))player.pos.x=nx;
- let nz=player.pos.z+motion.z*speed*dt;if(!solidAt(player.pos.x,nz,feet0,feet0+player.height))player.pos.z=nz;
+ let nx=player.pos.x+motion.x*speed*dt;const hitX=solidAt(nx,player.pos.z,feet0,feet0+player.height);if(!hitX)player.pos.x=nx;else{const top=hitX.position.y+.5,rise=top-feet0;if(rise>-.12&&rise<=.58&&!solidAt(nx,player.pos.z,top,top+player.height)){player.pos.x=nx;player.pos.y=top+player.height/2;player.vel.y=0;player.onGround=true}}
+ let nz=player.pos.z+motion.z*speed*dt;const feetNow=player.pos.y-player.height/2;const hitZ=solidAt(player.pos.x,nz,feetNow,feetNow+player.height);if(!hitZ)player.pos.z=nz;else{const top=hitZ.position.y+.5,rise=top-feetNow;if(rise>-.12&&rise<=.58&&!solidAt(player.pos.x,nz,top,top+player.height)){player.pos.z=nz;player.pos.y=top+player.height/2;player.vel.y=0;player.onGround=true}}
  // Preserve a small Garry's Mod-like horizontal impulse after a jump.
  player.pos.x+=player.vel.x*dt;player.pos.z+=player.vel.z*dt;player.vel.x*=Math.exp(-3.8*dt);player.vel.z*=Math.exp(-3.8*dt);
  const oldFeet=player.pos.y-player.height/2;player.vel.y-=19*dt;player.pos.y+=player.vel.y*dt;const feet=player.pos.y-player.height/2;
