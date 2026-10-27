@@ -606,8 +606,15 @@ const viewPickaxe=makePickaxe();viewPickaxe.position.set(.46,-.40,-.78);viewPick
 const worldPickaxe=makePickaxe();worldPickaxe.scale.setScalar(.68);worldPickaxe.position.set(.12,-.18,.015);worldPickaxe.rotation.z=-.1;armR.add(worldPickaxe);
 const toolModelKinds=['grenade','tnt','rocket','wrecking','hammer'],viewToolModels={},worldToolModels={};
 for(const kind of toolModelKinds){const v=makeToolModel(kind);v.position.set(.43,-.32,-.78);v.scale.setScalar(kind==='rocket'?.86:.78);camera.add(v);viewToolModels[kind]=v;const w=makeToolModel(kind);w.position.set(.12,-.18,.015);w.scale.setScalar(.68);armR.add(w);worldToolModels[kind]=w}
+const viewArm=new THREE.Group();
+const sleeve=new THREE.MeshStandardMaterial({color:0x20b9d5,roughness:.78}),skinHand=new THREE.MeshStandardMaterial({color:0xffc79e,roughness:.72});
+const forearm=new THREE.Mesh(new THREE.CylinderGeometry(.075,.105,.42,12),sleeve);forearm.position.set(-.012,-.285,0);forearm.rotation.z=-.34;forearm.castShadow=true;viewArm.add(forearm);
+const wrist=new THREE.Mesh(new THREE.CylinderGeometry(.072,.078,.12,12),skinHand);wrist.position.set(.015,-.105,.005);wrist.rotation.z=-.2;wrist.castShadow=true;viewArm.add(wrist);
+const palm=new THREE.Mesh(new THREE.BoxGeometry(.145,.13,.105),skinHand);palm.position.set(.025,-.04,-.005);palm.rotation.z=-.12;palm.castShadow=true;viewArm.add(palm);
+const thumb=new THREE.Mesh(new THREE.SphereGeometry(.043,10,8),skinHand);thumb.position.set(.09,-.045,.035);thumb.castShadow=true;viewArm.add(thumb);
+viewArm.position.set(.43,-.35,-.92);camera.add(viewArm);
 function syncToolModels(){
- const inGame=mode==='playing',heldWrecking=!!(wreckingBall&&wreckingBall.thrown>0);
+ const inGame=mode==='playing',heldWrecking=!!(wreckingBall&&wreckingBall.thrown>0);viewArm.visible=inGame&&!third;
  viewPickaxe.visible=inGame&&!third&&selectedTool==='pickaxe';worldPickaxe.visible=selectedTool==='pickaxe';
  for(const kind of toolModelKinds){const held=kind!=='wrecking'||!heldWrecking;viewToolModels[kind].visible=inGame&&!third&&selectedTool===kind&&held;worldToolModels[kind].visible=selectedTool===kind&&held}
 }
