@@ -443,8 +443,8 @@ function updateFallClusters(dt){
   cl.group.rotation.x+=cl.spin.x*dt;cl.group.rotation.y+=cl.spin.y*dt;cl.group.rotation.z+=cl.spin.z*dt;
   cl.group.updateMatrixWorld(true);let minBottom=Infinity;
   for(const item of cl.items){const p=item.getWorldPosition(new THREE.Vector3()),m=item.matrixWorld.elements;const ext=.5*(Math.abs(m[1])+Math.abs(m[5])+Math.abs(m[9]));minBottom=Math.min(minBottom,p.y-ext)}
-  if(minBottom<=.02&&cl.age>.24){
-   cl.group.position.y+=.02-minBottom;cl.group.updateMatrixWorld(true);
+  if(minBottom<=.52&&cl.age>.24){
+   cl.group.position.y+=.52-minBottom;cl.group.updateMatrixWorld(true);
    const impactSpeed=Math.abs(cl.vel.y),total=cl.items.length;
    for(const item of cl.items){const pos=item.getWorldPosition(new THREE.Vector3());recordBlockDamage(item);const count=total>65?1:total>28?2:3;for(let j=0;j<count;j++){const dir=new THREE.Vector3((Math.random()-.5)*2,.15+Math.random()*1.4,(Math.random()-.5)*2).normalize();makeDebrisPiece(pos.clone().add(new THREE.Vector3((Math.random()-.5)*.35,.05,(Math.random()-.5)*.35)),item.material,.12+Math.random()*.23,dir.multiplyScalar((3+Math.random()*5)*(impactSpeed>4?1.2:.85)),.55+Math.random()*.7)}}
    scene.remove(cl.group);fallingClusters.splice(i,1);cameraShake=Math.max(cameraShake,.17);playBreakSound(Math.min(2,1+total/50));impactFlash(cl.group.position.clone());
@@ -512,7 +512,7 @@ function updateCamera(dt,now){
 }
 function updateMenuRunner(dt,now){
  menuTimer+=dt;if(mode==='menu'||mode==='levels'){
-  hero.visible=mode==='menu';if(mode==='menu'){menuRunnerX+=dt*5.5;if(menuRunnerX>13)menuRunnerX=-13;hero.position.set(menuRunnerX,0,8);hero.rotation.y=Math.PI/2;const t=now*.018;legL.rotation.x=Math.sin(t)*.95;legR.rotation.x=-Math.sin(t)*.95;armL.rotation.x=-Math.sin(t)*.85;armR.rotation.x=Math.sin(t)*.85;torso.rotation.z=Math.sin(t*2)*.06;
+  hero.visible=mode==='menu';if(mode==='menu'){menuRunnerX+=dt*5.5;if(menuRunnerX>13)menuRunnerX=-13;hero.position.set(menuRunnerX,.5,8);hero.rotation.y=Math.PI/2;const t=now*.018;legL.rotation.x=Math.sin(t)*.95;legR.rotation.x=-Math.sin(t)*.95;armL.rotation.x=-Math.sin(t)*.85;armR.rotation.x=Math.sin(t)*.85;torso.rotation.z=Math.sin(t*2)*.06;
    if(menuTimer>.44){menuTimer=0;const pos=new THREE.Vector3(menuRunnerX,1.15,8);spawnSmallBurst(pos,palette[(['brickA','roofB','cityB','cityE'][Math.floor(Math.random()*4)])],9,4.2);const flash=new THREE.PointLight(0xff983f,2,5);flash.position.copy(pos);scene.add(flash);setTimeout(()=>scene.remove(flash),70)}
   }camera.position.set(0,10,34);camera.lookAt(0,4,0);
  }
