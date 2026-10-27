@@ -125,6 +125,10 @@ button{font:inherit}
     <div class="lock-shade"><div class="lock-icon">🔒</div><div class="lock-text">BLOQUEADO</div></div>
     <div class="card-label">NÍVEL 02 · DESTRUIÇÃO URBANA</div><div class="card-name">Pequena cidade</div><div class="card-desc">Uma cidade procedural. Prédios diferentes, fundações frágeis e caos em escala.</div><div class="card-action">DESBLOQUEIE O NÍVEL 01</div>
    </button>
+   <button class="level-card city" id="museumCard" type="button"><div class="level-art"><svg viewBox="0 0 180 130"><path d="M15 105L90 126L166 103L90 82Z" fill="#667c8c"/><path d="M28 49L90 18L151 49L90 80Z" fill="#d6c49d"/><path d="M28 49L90 80L90 111L28 80Z" fill="#a99070"/><path d="M90 80L151 49L151 80L90 111Z" fill="#806e5b"/><path d="M20 49L90 12L160 49L90 86Z" fill="#e4d7b9"/><path d="M36 48V79M52 41V86M128 41V86M144 48V79" stroke="#e8e0ca" stroke-width="8"/></svg></div><div class="card-label">NÍVEL 03 · COLEÇÃO</div><div class="card-name">Museu</div><div class="card-desc">Salões, galerias e alas de exposição.</div><div class="card-action">JOGAR ▶</div></button>
+   <button class="level-card city" id="prisonCard" type="button"><div class="level-art"><svg viewBox="0 0 180 130"><path d="M12 109L90 128L168 105L90 84Z" fill="#647787"/><path d="M27 42L90 18L153 42L90 65Z" fill="#65717c"/><path d="M27 42L90 65V111L27 88Z" fill="#414c59"/><path d="M90 65L153 42V88L90 111Z" fill="#303a46"/><path d="M45 47V91M58 52V96M71 57V100M109 57V100M122 52V96M135 47V91" stroke="#c4d0d8" stroke-width="4"/></svg></div><div class="card-label">NÍVEL 04 · SEGURANÇA MÁXIMA</div><div class="card-name">Prisão</div><div class="card-desc">Blocos de celas, torres e pátio central.</div><div class="card-action">JOGAR ▶</div></button>
+   <button class="level-card city" id="schoolCard" type="button"><div class="level-art"><svg viewBox="0 0 180 130"><path d="M12 109L90 128L168 105L90 84Z" fill="#657c8b"/><path d="M25 49L90 22L155 49L90 76Z" fill="#e6d3a5"/><path d="M25 49L90 76V110L25 82Z" fill="#c4a578"/><path d="M90 76L155 49V82L90 110Z" fill="#a37c54"/><path d="M62 39L90 26L118 39L90 51Z" fill="#c5483d"/><path d="M62 39V64L90 76V51Z" fill="#d45a46"/><path d="M90 51L118 39V64L90 76Z" fill="#9d352f"/></svg></div><div class="card-label">NÍVEL 05 · CAMPUS GIGANTE</div><div class="card-name">Mega Escola</div><div class="card-desc">Salas, ginásio, biblioteca e corredores longos.</div><div class="card-action">JOGAR ▶</div></button>
+   <button class="level-card city" id="metroCard" type="button"><div class="level-art"><svg viewBox="0 0 180 130"><path d="M7 110L90 130L174 105L90 84Z" fill="#657c8b"/><path d="M20 58L46 46V99L20 108Z" fill="#506779"/><path d="M49 35L78 21V91L49 102Z" fill="#7192a8"/><path d="M83 48L111 34V104L83 114Z" fill="#3e596f"/><path d="M116 26L151 11V89L116 101Z" fill="#8eb4c9"/><path d="M55 42L71 34M55 55L71 47M55 68L71 60M122 35L144 26M122 48L144 39M122 61L144 52" stroke="#bcecff" stroke-width="4"/></svg></div><div class="card-label">NÍVEL 06 · ESCALA METROPOLITANA</div><div class="card-name">Metrópolis</div><div class="card-desc">Quarteirões completos e arranha-céus.</div><div class="card-action">JOGAR ▶</div></button>
   </div>
   <div id="levelNotice" class="level-notice" role="status"></div>
   <div style="margin-top:17px"><button class="back-link" id="backHome" type="button">← MENU PRINCIPAL</button></div>
@@ -276,6 +280,33 @@ function buildCityBuilding(id,cx,cz,w,d,h,baseColor,preview=false){
  for(let x=0;x<w;x++)for(let z=0;z<d;z++)block(cx+x-Math.floor(w/2),h+1,cz+z-Math.floor(d/2),'cityroof',h%2?'roofB':'cityA',id,false,preview);
  if(h>=4){const x=cx+Math.floor(w/2)-1,z=cz-Math.floor(d/2)+1;block(x,h+2,z,'chimney','concrete',id,false,preview);block(x,h+3,z,'chimney','brickB',id,false,preview)}
 }
+function createLargeMap(which){
+ clearActiveLevelEntities();buildings.clear();
+ const cfg={
+ museum:{name:'Museu',nx:3,nz:3,spacing:10,w:6,d:5,h:4,colors:['concrete','cityA','cityB'],style:'museum'},
+ prison:{name:'Prisão',nx:4,nz:3,spacing:11,w:5,d:5,h:5,colors:['concrete','cityC','cityD'],style:'prison'},
+ school:{name:'Mega Escola',nx:5,nz:4,spacing:12,w:6,d:5,h:5,colors:['cityA','cityB','cityE','brickA'],style:'school'},
+ metro:{name:'Metrópolis',nx:7,nz:5,spacing:12,w:5,d:5,h:8,colors:['cityA','cityB','cityC','cityD','cityE'],style:'metro'}
+ }[which];
+ let count=0;
+ for(let iz=0;iz<cfg.nz;iz++)for(let ix=0;ix<cfg.nx;ix++){
+  const cx=(ix-(cfg.nx-1)/2)*cfg.spacing,cz=(iz-(cfg.nz-1)/2)*cfg.spacing;
+  let w=cfg.w,d=cfg.d,h=cfg.h;
+  if(which==='museum'){w=ix===1?8:6;d=iz===1?7:5;h=(ix===1&&iz===1)?5:3+((ix+iz)%2); }
+  if(which==='prison'){w=ix%2?5:4;d=5;h=4+((ix+iz)%3===0?2:0);}
+  if(which==='school'){w=ix===2?8:6;d=iz===1?7:5;h=(ix===2&&iz===1)?6:3+((ix+iz)%3);}
+  if(which==='metro'){w=4+(ix%3);d=4+(iz%2);h=5+((ix*3+iz*2)%8);}
+  const id=which+'-building-'+(++count),color=cfg.colors[count%cfg.colors.length];
+  buildCityBuilding(id,cx,cz,w,d,h,color,false);
+  if(which==='prison'){
+   for(let x=-2;x<=2;x++)for(let z=-2;z<=2;z++)if(Math.abs(x)===2||Math.abs(z)===2)block(cx+x,1,cz+z,'wall','concrete',id,false);
+  }
+  if(which==='museum'&&ix===1&&iz===1){for(let x=-2;x<=2;x++)block(cx+x,1,cz,'wall','window',id,false)}
+ }
+ const halfX=cfg.nx*cfg.spacing/2+4,halfZ=cfg.nz*cfg.spacing/2+4;
+ for(let z=-Math.ceil(halfZ);z<=halfZ;z+=3)for(const x of [-halfX,0,halfX]){const b=block(Math.round(x),0,z,'road','road',null,false);b.userData.decorative=true;b.userData.value=25}
+ levelState={id:which,name:cfg.name,totalBlocks:blocks.length,destroyedCount:0,damageValue:0,startedAt:performance.now(),payoutClaimed:false,goal:95};
+}
 function createProceduralCity(preview=false){
  clearActiveLevelEntities();buildings.clear();
  const plots=[[-12,-10],[-3,-10],[6,-10],[15,-10],[-12,0],[-3,0],[6,0],[15,0],[-12,10],[-3,10],[6,10],[15,10]];
@@ -320,15 +351,16 @@ document.getElementById('startPlay').addEventListener('click',e=>{e.preventDefau
 document.getElementById('backHome').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();generatePreviewCity();showScreen('menuScreen')});
 document.getElementById('houseCard').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();startLevel('house')});
 document.getElementById('cityCard').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();if(!cityUnlocked){toast('Destrua a casa para desbloquear a cidade');return}startLevel('city')});
+for(const [id,key] of [['museumCard','museum'],['prisonCard','prison'],['schoolCard','school'],['metroCard','metro']])document.getElementById(id).addEventListener('click',e=>{e.preventDefault();e.stopPropagation();startLevel(key)});
 
 function startLevel(which){
  if(which==='city'&&!cityUnlocked){toast('Nível bloqueado');return}
- if(which==='house')createHouseLevel();else createProceduralCity(false);
+ if(which==='house')createHouseLevel();else if(which==='city')createProceduralCity(false);else createLargeMap(which);
  if(which==='city')levelState={id:'city',name:'Pequena cidade',totalBlocks:blocks.filter(b=>!b.userData.decorative).length,destroyedCount:0,damageValue:0,startedAt:performance.now(),payoutClaimed:false,goal:95};
  levelState.totalBlocks=blocks.filter(b=>!b.userData.preview&&!b.userData.decorative).length;
  showScreen('__game__');mode='playing'; // Hide all menu layers before gameplay input is enabled.
  document.getElementById('hud').classList.add('on');document.getElementById('mobile').style.display=isTouchScreen()?'block':'none';document.getElementById('menuScreen').classList.add('hidden');document.getElementById('levelsScreen').classList.add('hidden');
- player.pos.y=1.5;player.vel.set(0,0,0);if(which==='house')player.pos.set(0,1.5,7);else player.pos.set(0,1.5,19);
+ player.pos.y=1.5;player.vel.set(0,0,0);if(which==='house')player.pos.set(0,1.5,7);else player.pos.set(0,1.5,Math.max(19,({museum:32,prison:35,school:42,metro:54}[which]||19)));
  yaw=0;pitch=-.05;targetDist=0;camDist=0;third=false;sprintToggle=false;toolActive=false;attackHeld=false;pickaxeTimer=0;updateToolUIReset();updateDamageUI();
  if(!isTouchScreen())renderer.domElement.requestPointerLock?.();
 }
