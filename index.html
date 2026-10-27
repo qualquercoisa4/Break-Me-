@@ -373,7 +373,7 @@ document.addEventListener('keyup',e=>{keys.delete(e.code);if(e.code==='ShiftLeft
 function jump(){if(player.onGround){player.vel.y=7.15;const push=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw));player.vel.x+=push.x*1.15;player.vel.z+=push.z*1.15;player.onGround=false}}
 document.getElementById('jump').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();jump()});
 document.getElementById('useTool').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();beginToolHold(e.clientX,e.clientY)});
-document.getElementById('useTool').addEventListener('pointerup',e=>{e.preventDefault();e.stopPropagation();endToolHold()});
+document.getElementById('useTool').addEventListener('pointerup',e=>{e.preventDefault();e.stopPropagation();if(!toolActive&&!toolFiredThisHold){toolActive=true;attackHeld=true;smashBlock()}endToolHold()});
 document.getElementById('useTool').addEventListener('pointercancel',e=>{e.preventDefault();endToolHold()});
 const sprintButton=document.getElementById('sprint');
 sprintButton.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();sprintToggle=!sprintToggle;sprintButton.setAttribute('aria-pressed',String(sprintToggle));sprintButton.innerHTML='CORRER<br>'+(sprintToggle?'ON':'OFF');sprintButton.style.background=sprintToggle?'#146c59e8':''});
