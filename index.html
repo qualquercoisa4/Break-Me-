@@ -223,6 +223,9 @@ function detachUnsupported(structureId){
 }
 function collapseStructure(structureId){
  const stat=buildings.get(structureId);if(!stat||stat.collapsed)return;stat.collapsed=true;
+ // The remaining footing fractures too, so the upper structure has a clear path to the ground.
+ const footing=blocks.filter(b=>b.userData.structureId===structureId&&b.userData.foundation);
+ for(const base of footing){const pos=base.position.clone();const i=blocks.indexOf(base);if(i>=0)blocks.splice(i,1);scene.remove(base);recordBlockDamage(base);spawnSmallBurst(pos,base.material,2,2.8)}
  const upper=blocks.filter(b=>b.userData.structureId===structureId&&!b.userData.foundation);
  for(const comp of connectedComponents(upper))detachComponent(comp,1.25);
  cameraShake=Math.max(cameraShake,.22);playCollapseSound();
